@@ -278,7 +278,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
                 break
         self.wfile.flush()
 
-class WebTest(object):
+class WebTest(TestCase):
 
     def setUp(self):
         self.server = StubServer(8998)
