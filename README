@@ -1,0 +1,5 @@
+Stub servers for testing against
+
+WebServer - This is in regular use, so it's pretty stable.
+
+FTPServer - This is a new addition, so not so stable just yet.
