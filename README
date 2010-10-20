@@ -1,9 +1,6 @@
-stubserver.py
+Stub Server
 
-Testing external web dependencies in a mock objects style.  Written for Python 2.6, ported to Python 2.5 this library includes 
-the tests at the bottom of the stubserver.py file, which serve both as the TDD tests written while creating this library, and
-as examples / documentation.  It supports any HTTP method, i.e. GET, PUT, POST and DELETE.  It supports chunked encoding, but 
-currently we have no use cases for multipart support etc, so it doesn't do it.  An excerpt from the tests is below:-
+Testing external web dependencies in a mock objects style.  Written for Python 2.6, ported to Python 2.5 this library includes the tests at the bottom of the stubserver.py file, which serve both as the TDD tests written while creating this library, and as examples / documentation.  It supports any HTTP method, i.e. GET, PUT, POST and DELETE.  It supports chunked encoding, but currently we have no use cases for multipart support etc, so it doesn't do it.  An excerpt from the tests is below:-
 
 class WebTest(TestCase):
 
@@ -25,7 +22,6 @@ class WebTest(TestCase):
         self.assertEquals("world", captured["hello"])
         # 
         
-Though stubserver is at version 0.1, it is actively used in Python 2.5 to Python 2.7 codebases, so it is 
-fairly bug free.  
+Though stubserver is at version 0.1, it is actively used in Python 2.5 to Python 2.7 codebases, so it is fairly bug free.  
 
 There is also an FTPStubServer for your FTP testing needs, but that is NOT bug free at the moment.  All assistance gratefully received.
