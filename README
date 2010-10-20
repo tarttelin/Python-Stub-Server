@@ -25,5 +25,7 @@ class WebTest(TestCase):
         self.assertEquals("world", captured["hello"])
         # 
         
-Though stubserver is at version 0.1, it is actively used in Point 2 for Python 2.5 to Python 2.7 codebases, so it is 
+Though stubserver is at version 0.1, it is actively used in Python 2.5 to Python 2.7 codebases, so it is 
 fairly bug free.  
+
+There is also an FTPStubServer for your FTP testing needs, but that is NOT bug free at the moment.  All assistance gratefully received.
