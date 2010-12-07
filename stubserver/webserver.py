@@ -34,7 +34,6 @@ class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
 
 if sys.version_info[0] == 2 and sys.version_info[1] < 6:
     HTTPServer = StoppableHTTPServer
-    print "Using stoppable server"
 else:
     HTTPServer = BaseHTTPServer.HTTPServer
 
@@ -145,8 +144,9 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.wfile.write(exp.response[2])
                 data = self._get_data()
                 exp.satisfied = True
-                print "Captured data " + data
                 exp.data_capture["body"] = data
                 break
         self.wfile.flush()
 
+    def log_request(code=None, size=None):
+        pass
