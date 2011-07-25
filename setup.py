@@ -10,5 +10,5 @@ setup(name='stubserver',
       author='Chris Tarttelin and Point 2 inc',
       author_email='ctarttelin@point2.com',
       url='http://www.pyruby.com/pythonstubserver',
-      py_modules=['stubserver'],
+      packages=['stubserver'],
      )
