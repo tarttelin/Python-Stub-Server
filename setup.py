@@ -8,7 +8,7 @@ setup(name='stubserver',
       For example, an application that consumes data from an external REST api.  The usage pattern is intended to be very
       much like using a mock framework.''',
       author='Chris Tarttelin and Point 2 inc',
-      author_email='ctarttelin@point2.com',
+      author_email='chris@pyruby.co.uk',
       url='http://www.pyruby.com/pythonstubserver',
       packages=['stubserver'],
      )
