@@ -5,7 +5,7 @@ from unittest import TestCase
 from StringIO import StringIO
 
 
-class WebTest(object):
+class WebTest(TestCase):
 
     def setUp(self):
         self.server = StubServer(8998)
@@ -62,6 +62,16 @@ class WebTest(object):
             self.assertEquals(200, reply_code)
         finally:
             f.close()
+            
+    def test_get_from_root(self):
+        self.server.expect(method="GET", url="/$").and_return(content="<html><body>Server is up</body></html>", mime_type="text/html")
+        f, reply_code = self._make_request("http://localhost:8998/", method="GET")
+        try:
+            self.assertTrue("Server is up" in f.read())
+            self.assertEquals(200, reply_code)
+        finally:
+            f.close()
+        
             
 class FTPTest(TestCase):
 
