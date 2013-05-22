@@ -123,9 +123,9 @@ class FTPStubServer(object):
     def add_file(self, name, content):
         self._files[name] = content
         
-    def run(self):
+    def run(self, timeout = 2):
         self.server = SocketServer.TCPServer(('localhost',self.port), FTPServer(self.port, self._interactions, self._files))
-        self.server.timeout = 2
+        self.server.timeout = timeout
         self.server_thread = threading.Thread(target=self._run)
         self.server_thread.setDaemon(True)
         self.server_thread.start()
