@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='stubserver',
-      version='0.2.1',
+      version='0.3.1',
       description='''A stub webserver used to enable blackbox testing of applications that call external web urls.  
       For example, an application that consumes data from an external REST api.  The usage pattern is intended to be very
       much like using a mock framework.''',
