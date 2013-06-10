@@ -42,6 +42,7 @@ class FTPServer(SocketServer.BaseRequestHandler):
         self.data_handler = FTPDataServer(self.interactions, self.files)
         def start_data_server():
             self.port = self.port + 1
+            SocketServer.TCPServer.allow_reuse_address = True
             data_server = SocketServer.TCPServer(('localhost',self.port + 1), self.data_handler)
             data_server.handle_request()
             data_server.server_close()
