@@ -1,12 +1,13 @@
-from stubserver import StubServer,FTPStubServer
+import unittest
+import urllib
+import urllib2
 from ftplib import FTP
-import unittest, urllib, urllib2
-from unittest import TestCase
+from stubserver import StubServer, FTPStubServer
 from StringIO import StringIO
+from unittest import TestCase
 
 
 class WebTest(TestCase):
-
     def setUp(self):
         self.server = StubServer(8998)
         self.server.run()
@@ -62,7 +63,7 @@ class WebTest(TestCase):
             self.assertEquals(200, reply_code)
         finally:
             f.close()
-            
+
     def test_get_from_root(self):
         self.server.expect(method="GET", url="/$").and_return(content="<html><body>Server is up</body></html>", mime_type="text/html")
         f, reply_code = self._make_request("http://localhost:8998/", method="GET")
@@ -71,14 +72,14 @@ class WebTest(TestCase):
             self.assertEquals(200, reply_code)
         finally:
             f.close()
-        
-            
-class FTPTest(TestCase):
 
+
+class FTPTest(TestCase):
     def setUp(self):
-        self.port = 6666
-        self.server = FTPStubServer(self.port)
+        self.random_port = 0
+        self.server = FTPStubServer(self.random_port)
         self.server.run()
+        self.port = self.server.server.server_address[1]
 
     def tearDown(self):
         self.server.stop()
@@ -101,13 +102,14 @@ class FTPTest(TestCase):
         ftp.set_debuglevel(0)
         ftp.login('user2','other_pass')
 
-        ftp.storlines('STOR robot.txt', StringIO("file1 content"*1024))
+        ftp.storlines('STOR robot.txt', StringIO("\n".join(["file1 content" for i in range(1024)])))
         ftp.storlines('STOR monster.txt', StringIO("file2 content"))
         ftp.quit()
         ftp.close()
-        self.assertEquals("file1 content"*1024, self.server.files("robot.txt").strip())
+        self.assertEquals("\r\n".join(["file1 content" for i in range(1024)]),
+                          self.server.files("robot.txt").strip())
         self.assertEquals("file2 content", self.server.files("monster.txt").strip())
-        
+
     def test_retrieve_expected_file_returns_file(self):
         expected_content = 'content of my file\nis a complete mystery to me.'
         self.server.add_file('foo.txt', expected_content)
@@ -123,6 +125,7 @@ class FTPTest(TestCase):
         ftp.close()
         self.assertTrue('foo.txt' in '\n'.join(directory_content))
         self.assertEquals(expected_content, '\n'.join(file_content))
+
 
 if __name__=='__main__':
     unittest.main()
