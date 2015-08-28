@@ -1,2 +1,8 @@
-*.pyc
+*.py[co]
+*.sw[po]
 dist
+build
+stubserver.egg-info
+__pycache__/
+.coverage
+.idea/
