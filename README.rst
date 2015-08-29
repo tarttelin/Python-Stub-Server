@@ -2,6 +2,12 @@
 Stub Server
 ===========
 
+.. image:: https://api.travis-ci.org/tarttelin/Python-Stub-Server.svg
+        :target: https://travis-ci.org/tarttelin/Python-Stub-Server
+
+.. image:: https://coveralls.io/repos/tarttelin/Python-Stub-Server/badge.svg?branch=master&service=github
+        :target: https://coveralls.io/github/tarttelin/Python-Stub-Server?branch=master
+
 Testing external web dependencies in a mock objects style. Written for Python
 2.6, ported to Python 2.5 this library includes the tests at the bottom of
 the stubserver.py file, which serve both as the TDD tests written while
