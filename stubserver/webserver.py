@@ -2,9 +2,11 @@ import BaseHTTPServer, cgi, threading, re, urllib
 import time
 import sys
 
+
 class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
-    """Python 2.5 HTTPServer does not close down properly when calling server_close.
-    The implementation below was based on the comments in the below article:-
+    """
+    Python 2.5 HTTPServer does not close down properly when calling server_close.
+    The implementation below was based on the comments in the below article:
     http://stackoverflow.com/questions/268629/how-to-stop-basehttpserver-serveforever-in-a-basehttprequesthandler-subclass
     """
     stopped = False
@@ -32,36 +34,41 @@ class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
         f.close()
 
 
-if sys.version_info[0] == 2 and sys.version_info[1] < 6:
+if sys.version_info < (2, 6):
     HTTPServer = StoppableHTTPServer
 else:
     HTTPServer = BaseHTTPServer.HTTPServer
 
 
 class StubServer(object):
-
-    def __init__(self, port):
+    def __init__(self, port=8080, address='localhost'):
         self._expectations = []
         self.port = port
+        self.address = address
 
     def run(self):
-        server_address = ('localhost', self.port)
+        server_address = (self.address, self.port)
         self.httpd = HTTPServer(server_address, StubResponse(self._expectations))
-        t = threading.Thread(target=self._run)
-        t.start()
+        thread = threading.Thread(target=self._run)
+        thread.start()
 
     def stop(self):
         self.httpd.shutdown()
         self.httpd.server_close()
         self.verify()
 
-    def _run(self, ):
+    def _run(self):
         try:
             self.httpd.serve_forever()
         except:
             pass
 
     def verify(self):
+        """
+        Check all exceptation has been made.
+
+        :raises: Exception: If one them isn't made.
+        """
         failures = []
         for expectation in self._expectations:
             if not expectation.satisfied:
@@ -70,13 +77,50 @@ class StubServer(object):
         if failures:
             raise Exception("Unsatisfied expectations: " + "\n".join(failures))
 
-    def expect(self, method="GET", url="^UrlRegExpMather$", data=None, data_capture={}, file_content=None):
+    def expect(self, method="GET", url="^UrlRegExpMather$", data=None, data_capture={},
+               file_content=None):
+        """
+        Prepare :class:`StubServer` to handle an HTTP request.
+
+        :param method: HTTP method
+        :type method: ``str``
+
+        :param url: Regex matching with path part of an URL
+        :type url: Raw ``str``
+
+        :param data: Excepted data
+        :type data: ``None`` or other
+
+        :param data_capture: Dictionary given by user for gather data returned
+                             by server.
+        :type data_capture: ``dict``
+
+        :param file_content: Unsed
+
+        :return: Expectation object initilized
+        :rtype: :class:`Expectation`
+        """
         expected = Expectation(method, url, data, data_capture)
         self._expectations.append(expected)
         return expected
 
+
 class Expectation(object):
     def __init__(self, method, url, data, data_capture):
+        """
+        :param method: HTTP method
+        :type method: ``str``
+
+        :param url: Regex matching with path part of an URL
+        :type url: ``str``
+
+        :param data: Excepted data
+        :type data: ``None`` or other
+
+        :param data_capture: Dictionary given by user for gather data returned
+                             by server.
+        :type data_capture: ``dict``
+        """
         self.method = method
         self.url = url
         self.data = data
@@ -84,14 +128,30 @@ class Expectation(object):
         self.satisfied = False
 
     def and_return(self, mime_type="text/html", reply_code=200, content="", file_content=None):
+        """
+        Define the response created by the expectation.
+
+        :param mime_type: Define content type of HTTP response
+        :type mime_type: ``str``
+
+        :param reply_code: Define response code of HTTP response
+        :type reply_code: ``int``
+
+        :param content: Define response's content
+        :type content: ``str``
+
+        :param file_content: Define response's content from a file
+        :type file_content: ``str``
+        """
         if file_content:
             f = open(file_content, "r")
             content = f.read()
             f.close()
         self.response = (reply_code, mime_type, content)
 
-    def __str__ (self):
-        return "url: %s \n data_capture: %s\n" %(self.url,self.data_capture)   
+    def __str__(self):
+        return "url: %s \n data_capture: %s\n" % (self.url, self.data_capture)
+
 
 class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
 
