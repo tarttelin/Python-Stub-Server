@@ -29,3 +29,4 @@ after_success: coveralls $COVERALLS_OPTION
 #     - python: "3.4"
 #       env: COVERALLS_OPTION=debug DJANGO_PACKAGE="Django>=1.8,<1.9"
 #       script: make docs
+# 
