@@ -1,0 +1,31 @@
+language: python
+
+python:
+  # - "2.5"  # No longer supported
+  - "2.6"
+  - "2.7"
+  # - "3.2"
+  # - "3.3"
+  # - "3.4"
+  - "pypy"
+
+install:
+  # - pip install -r requirements.txt
+  # - pip install -r requirements-tests.txt
+  # - pip install -r requirements-docs.txt
+  - pip install coveralls coverage
+
+script:
+  - coverage run setup.py test
+after_success: coveralls $COVERALLS_OPTION
+
+# matrix:
+#   include:
+#     - python: "2.7"
+#       env: COVERALLS_OPTION=debug DJANGO_PACKAGE="Django>=1.8,<1.9"
+#       script: 
+#         - pylint --rcfile=.pylintrc -E dbbackup/ || true
+#         - flake8 dbbackup || true
+#     - python: "3.4"
+#       env: COVERALLS_OPTION=debug DJANGO_PACKAGE="Django>=1.8,<1.9"
+#       script: make docs
