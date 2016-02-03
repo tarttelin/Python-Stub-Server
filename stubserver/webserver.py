@@ -73,7 +73,7 @@ class StubServer(object):
         for expectation in self._expectations:
             if not expectation.satisfied:
                 failures.append(str(expectation))
-            self._expectations.remove(expectation)
+        del self._expectations[:]
         if failures:
             raise Exception("Unsatisfied expectations: " + "\n".join(failures))
 
