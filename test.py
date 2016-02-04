@@ -141,7 +141,7 @@ class TestVerify(TestCase):
 
         self.server.verify()
 
-        self.assertItemsEqual([], self.server._expectations)
+        self.assertEqual([], self.server._expectations)
 
     def test_verify_checks_all_expectations(self):
         satisfied_expectation = self._MockExpectation(True)
@@ -152,8 +152,7 @@ class TestVerify(TestCase):
             satisfied_expectation
         ]
 
-        with self.assertRaises(Exception):
-            self.server.verify()
+        self.assertRaises(Exception, self.server.verify)
 
     class _MockExpectation(object):
         def __init__(self, satisfied):
