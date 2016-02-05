@@ -127,9 +127,20 @@ class FTPTest(TestCase):
         self.assertEquals(expected_content, '\n'.join(file_content))
 
 
-class TestVerify(TestCase):
+class VerifyTest(TestCase):
     def setUp(self):
         self.server = StubServer(8998)
+
+    def test_verify_checks_all_expectations(self):
+        satisfied_expectation = self._MockExpectation(True)
+        unsatisfied_expectation = self._MockExpectation(False)
+        self.server._expectations = [
+            satisfied_expectation,
+            unsatisfied_expectation,
+            satisfied_expectation
+        ]
+
+        self.assertRaises(Exception, self.server.verify)
 
     def test_verify_clears_all_expectations(self):
         satisfied_expectation = self._MockExpectation(True)
@@ -142,17 +153,6 @@ class TestVerify(TestCase):
         self.server.verify()
 
         self.assertEqual([], self.server._expectations)
-
-    def test_verify_checks_all_expectations(self):
-        satisfied_expectation = self._MockExpectation(True)
-        unsatisfied_expectation = self._MockExpectation(False)
-        self.server._expectations = [
-            satisfied_expectation,
-            unsatisfied_expectation,
-            satisfied_expectation
-        ]
-
-        self.assertRaises(Exception, self.server.verify)
 
     class _MockExpectation(object):
         def __init__(self, satisfied):
