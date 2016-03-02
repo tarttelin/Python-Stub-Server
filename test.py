@@ -1,5 +1,4 @@
 import unittest
-import urllib
 import urllib2
 from ftplib import FTP
 from stubserver import StubServer, FTPStubServer
@@ -14,7 +13,7 @@ class WebTest(TestCase):
 
     def tearDown(self):
         self.server.stop()
-        self.server.verify()
+        self.server.verify()  # this is redundant because stop includes verify
 
     def _make_request(self, url, method="GET", payload="", headers={}):
         self.opener = urllib2.OpenerDirector()
@@ -72,6 +71,52 @@ class WebTest(TestCase):
             self.assertEquals(200, reply_code)
         finally:
             f.close()
+
+    def test_put_when_post_expected(self):
+        # set expectations
+        self.server.expect(method="POST", url="address/\d+/inhabitant", data='<inhabitant name="Chris"/>').and_return(
+            reply_code=204)
+
+        # try a different method
+        f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="PUT",
+                                           payload='<inhabitant name="Chris"/>')
+
+        # Validate the response
+        self.assertEquals("Method not allowed", f.msg)
+        self.assertEquals(405, reply_code)
+        self.assertTrue(f.read().startswith("Method PUT not allowed."))
+
+        # And we have an unmet expectation which needs to mention the POST that didn't happen
+        try:
+            self.server.stop()
+        except Exception as e:
+            self.assertTrue(str(e).find("POST") > 0, str(e))
+
+    def test_unexpected_get(self):
+        f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="GET")
+        self.assertEquals(404, reply_code)
+        self.server.stop()
+
+    def test_repeated_get(self):
+        self.server.expect(method="GET", url="counter$").and_return(content="1")
+        self.server.expect(method="GET", url="counter$").and_return(content="2")
+        self.server.expect(method="GET", url="counter$").and_return(content="3")
+
+        for i in range(1, 4):
+            f, reply_code = self._make_request("http://localhost:8998/counter", method="GET")
+            self.assertEquals(200, reply_code)
+            self.assertEquals(str(i), f.read())
+
+    def test_extra_get(self):
+        self.server.expect(method="GET", url="counter$").and_return(content="1")
+        f, reply_code = self._make_request("http://localhost:8998/counter", method="GET")
+        self.assertEquals(200, reply_code)
+        self.assertEquals("1", f.read())
+
+        f, reply_code = self._make_request("http://localhost:8998/counter", method="GET")
+        self.assertEquals(400, reply_code)
+        self.assertEquals("Expectations exhausted",f.msg)
+        self.assertTrue(f.read().startswith("Expectations at this URL have already been satisfied.\n"))
 
 
 class FTPTest(TestCase):
