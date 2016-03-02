@@ -1,4 +1,7 @@
-import BaseHTTPServer, cgi, threading, re, urllib
+import BaseHTTPServer
+import threading
+import re
+import urllib
 import time
 import sys
 
@@ -150,11 +153,10 @@ class Expectation(object):
         self.response = (reply_code, mime_type, content)
 
     def __str__(self):
-        return "url: %s \n data_capture: %s\n" % (self.url, self.data_capture)
+        return "%s %s \n data_capture: %s\n" % (self.method, self.url, self.data_capture)
 
 
 class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
-
     def __call__(self, request, client_address, server):
         self.request = request
         self.client_address = client_address
@@ -162,7 +164,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             self.setup()
             self.handle()
-        finally:    
+        finally:
             self.finish()
 
     def __init__(self, expectations):
@@ -196,16 +198,44 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         method = self.command
         if self.path == "/__shutdown":
             self.send_response(200, "Python")
-        for exp in self.expected:
-            if exp.method == method and re.search(exp.url, self.path) and not exp.satisfied:
-                self.send_response(exp.response[0], "Python")
-                self.send_header("Content-Type", exp.response[1])
-                self.end_headers()
-                self.wfile.write(exp.response[2])
-                data = self._get_data()
-                exp.satisfied = True
-                exp.data_capture["body"] = data
-                break
+
+        expectations_matching_url = [x for x in self.expected if re.search(x.url, self.path)]
+        expectations_matching_method = [x for x in expectations_matching_url if x.method == method]
+        matching_expectations = [x for x in expectations_matching_method if not x.satisfied]
+
+        err_code = err_message = err_body = None
+        if len(matching_expectations) > 0:
+            exp = matching_expectations[0]
+            self.send_response(exp.response[0], "Python")
+            self.send_header("Content-Type", exp.response[1])
+            self.end_headers()
+            self.wfile.write(exp.response[2])
+            data = self._get_data()
+            exp.satisfied = True
+            exp.data_capture["body"] = data
+        elif len(expectations_matching_method) > 0:
+            # All expectations have been fulfilled
+            err_code = 400
+            err_message = "Expectations exhausted"
+            err_body = "Expectations at this URL have already been satisfied.\n" + str(expectations_matching_method)
+        elif len(expectations_matching_url) > 0:
+            # Method not allowed
+            err_code = 405
+            err_message = "Method not allowed"
+            err_body = "Method " + method + " not allowed.\n" + str(expectations_matching_url)
+        else:
+            # not found
+            err_code = 404
+            err_message = "Not found"
+            err_body = "No URL pattern matched."
+
+        if err_code is not None:
+            self.send_response(err_code, err_message)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(err_body)
+            self._get_data()
+
         self.wfile.flush()
 
     def log_request(code=None, size=None):
