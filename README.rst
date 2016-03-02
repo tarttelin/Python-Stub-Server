@@ -18,6 +18,9 @@ An excerpt from the tests is below:
 
 ::
 
+  from unittest import TestCase
+  from stubserver import StubServer
+
   class WebTest(TestCase):
 
       def setUp(self):
