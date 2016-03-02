@@ -77,7 +77,7 @@ class StubServer(object):
         if failures:
             raise Exception("Unsatisfied expectations: " + "\n".join(failures))
 
-    def expect(self, method="GET", url="^UrlRegExpMather$", data=None, data_capture={},
+    def expect(self, method="GET", url="^UrlRegExpMather$", data=None, data_capture=None,
                file_content=None):
         """
         Prepare :class:`StubServer` to handle an HTTP request.
@@ -121,6 +121,8 @@ class Expectation(object):
                              by server.
         :type data_capture: ``dict``
         """
+        if data_capture is None:
+            data_capture = {}
         self.method = method
         self.url = url
         self.data = data
@@ -162,7 +164,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             self.setup()
             self.handle()
-        finally:    
+        finally:
             self.finish()
 
     def __init__(self, expectations):

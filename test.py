@@ -55,6 +55,16 @@ class WebTest(TestCase):
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='<inhabitant name="Chris"/>')
         self.assertEquals(204, reply_code)
 
+    def test_post_with_data_and_no_body_response(self):
+        self.server.expect(method="POST", url="address/\d+/inhabitant", data='Twas brillig and the slithy toves').and_return(reply_code=204)
+        f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='Twas brillig and the slithy toves')
+        self.assertEquals(204, reply_code)
+        self.server.expect(method="GET", url="/monitor/server_status$").and_return(content="Four score and seven years ago", mime_type="text/html")
+        try:
+            self.server.stop()
+        except Exception as e:
+            self.assertEquals(-1, str(e).find('brillig'), str(e))
+
     def test_get_with_data(self):
         self.server.expect(method="GET", url="/monitor/server_status$").and_return(content="<html><body>Server is up</body></html>", mime_type="text/html")
         f, reply_code = self._make_request("http://localhost:8998/monitor/server_status", method="GET")
