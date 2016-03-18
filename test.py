@@ -134,17 +134,10 @@ class WebTest(TestCase):
 
 
 class FTPTest(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        FTPTest.server = FTPStubServer(0)
-        FTPTest.server.run()
-        FTPTest.port = FTPTest.server.server.server_address[1]
-        
-    @classmethod
-    def tearDownClass(cls):
-        FTPTest.server.stop()
-
     def setUp(self):
+        self.server = FTPStubServer(0)
+        self.server.run()
+        self.port = self.server.server.server_address[1]
         self.ftp = FTP()
         self.ftp.set_debuglevel(0)
         self.ftp.connect('localhost', self.port)
@@ -153,6 +146,7 @@ class FTPTest(TestCase):
     def tearDown(self):
         self.ftp.quit()
         self.ftp.close()
+        self.server.stop()
 
     def test_change_directory(self):
         self.ftp.cwd('newdir')
