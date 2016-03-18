@@ -12,6 +12,7 @@ class FTPServer(SocketServer.BaseRequestHandler):
         self.port = port
         self.interactions = interactions
         self.files = files
+        self.cwd = '/'
 
     def __call__(self, request, client_address, server):
         self.request = request
@@ -30,10 +31,13 @@ class FTPServer(SocketServer.BaseRequestHandler):
         self.communicating = True
         while self.communicating:
             cmd = self.request.recv(1024)
+            if len(cmd) == 0:
+                break
             if cmd:
                 self.interactions.append(cmd)
-                cmd = cmd.decode('utf-8')
-                getattr(self, '_' + cmd[:4])(cmd)
+                cmd = cmd.decode('utf-8').rstrip()
+                first = cmd.split(' ', 1)[0]
+                getattr(self, '_' + first)(cmd)
 
     def _USER(self, cmd):
         self.request.send(b'331 Please specify password.\r\n')
@@ -45,23 +49,12 @@ class FTPServer(SocketServer.BaseRequestHandler):
         self.request.send(b'200 Switching to ascii mode.\r\n')
 
     def _PASV(self, cmd):
-        self.parent_event = threading.Event()
-        self.child_event = threading.Event()
-        self.data_handler = FTPDataServer(self.interactions, self.files, self.child_event)
+        self.data_handler = FTPDataServer(self.interactions, self.files)
+        self.port = self.port + 1
+        SocketServer.TCPServer.allow_reuse_address = True
+        self.data_server = SocketServer.TCPServer((self.hostname, self.port + 1), self.data_handler)
         
-        def start_data_server():
-            self.port = self.port + 1
-            SocketServer.TCPServer.allow_reuse_address = True
-            data_server = SocketServer.TCPServer((self.hostname, self.port + 1), self.data_handler)
-            # needs to signal ready here
-            self.parent_event.set()
-            data_server.handle_request()
-            data_server.server_close()
-            self.parent_event.set()
 
-        self.t2 = threading.Thread(target=start_data_server)
-        self.t2.start()
-        self.parent_event.wait()
         self.request.send(('227 Entering Passive Mode. (127,0,0,1,%s,%s)\r\n' % (
             int((self.port + 1) / 256), (self.port + 1) % 256)).encode('utf-8'))
 
@@ -69,40 +62,45 @@ class FTPServer(SocketServer.BaseRequestHandler):
         return self.interactions[-1:][0][5:].strip()
 
     def child_go(self):
-        self.child_event.set()
-        self.parent_event.clear()
-        self.parent_event.wait()
+        self.data_server.handle_request()
+        self.data_server.server_close()
 
     def _STOR(self, cmd):
         self.request.send(b'150 Okay to send data\r\n')
         self.child_go()
         self.request.send(b'226 Got the file\r\n')
-        self.t2.join(1)
 
     def _LIST(self, cmd):
         self.request.send(b'150 Accepted data connection\r\n')
         self.child_go()
         self.request.send(b'226 You got the listings now\r\n')
-        self.t2.join(1)
 
     def _RETR(self, cmd):
         self.request.send(b'150 Accepted data connection\r\n')
         self.child_go()
         self.request.send(b'226 Enjoy your file\r\n')
-        self.t2.join(1)
+
+    def _CWD(self, cmd):
+        self.cwd = cmd.split(' ',2)[1]
+        self.request.send(b'250 OK. Current directory is "%s"\r\n' % self.cwd.encode('utf-8'))
+
+    def _PWD(self, cmd):
+        self.request.send(b'257 "%s" is your current location\r\n' % self.cwd.encode('utf-8'))
+
+    def _NLST(self, cmd):
+        self.request.send(b'150 Accepted data connection\r\n')
+        self.child_go()
+        self.request.send(b'226 You got the listings now\r\n')
 
     def _QUIT(self, cmd):
-        self.request.send(b'221 Goodbye\r\n')
         self.communicating = False
-        time.sleep(0.001)
-
+        self.request.send(b'221-Goodbye.\r\n221 Have fun.')
 
 class FTPDataServer(SocketServer.StreamRequestHandler):
-    def __init__(self, interactions, files, event):
+    def __init__(self, interactions, files):
         self.interactions = interactions
         self.files = files
         self.command = 'LIST'
-        self.child_event = event
 
     def __call__(self, request, client_address, server):
         self.request = request
@@ -116,7 +114,6 @@ class FTPDataServer(SocketServer.StreamRequestHandler):
             self.finish()
 
     def handle(self):
-        self.child_event.wait()
         cmd = self.interactions[-1:][0].decode('utf-8')
         if cmd[:4] == 'PASV':
             return
@@ -131,11 +128,15 @@ class FTPDataServer(SocketServer.StreamRequestHandler):
         self.files[self.filename()] = self.rfile.read().strip()
 
     def _LIST(self):
-        data = '\n'.join([name for name in self.files.keys()])
-        self.wfile.write(data.encode('utf-8'))
+        data = b'\n'.join([name for name in self.files.keys()])
+        self.wfile.write(data)
+
+    def _NLST(self):
+        data = b'\015\012'.join([name for name in self.files.keys()])
+        self.wfile.write(data)
 
     def _RETR(self):
-        self.wfile.write(self.files[self.filename().decode('utf-8')].encode('utf-8'))
+        self.wfile.write(self.files[self.filename()])
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):

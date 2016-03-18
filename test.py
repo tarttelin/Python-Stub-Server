@@ -143,6 +143,16 @@ class FTPTest(TestCase):
     def tearDown(self):
         self.server.stop()
 
+    def test_change_directory(self):
+        ftp = FTP()
+        ftp.set_debuglevel(0)
+        ftp.connect('localhost', self.port)
+        ftp.login('user1', 'passwd')
+        ftp.cwd('newdir')
+        self.assertEqual(ftp.pwd(), 'newdir')
+        ftp.quit()
+        ftp.close()
+
     def test_put_test_file(self):
         self.assertFalse(self.server.files("foo.txt"))
         ftp = FTP()
@@ -169,6 +179,38 @@ class FTPTest(TestCase):
         self.assertEquals("\r\n".join(["file1 content" for i in range(1024)]),
                           self.server.files("robot.txt").strip())
         self.assertEquals("file2 content", self.server.files("monster.txt").strip())
+
+    def test_list_2_files(self):
+        ftp = FTP()
+        ftp.connect('localhost', self.port)
+        ftp.set_debuglevel(0)
+        ftp.login('user2','other_pass')
+        self.lines = []
+        def accumulate(line):
+            self.lines.append(line)
+
+        ftp.storlines('STOR palladium.csv', BytesIO(b'data'))
+        ftp.storlines('STOR vanadiyam.pdf', BytesIO(b'more data'))
+        ftp.retrlines('LIST', accumulate)
+        self.assertEqual(self.lines, ['palladium.csv', 'vanadiyam.pdf'])
+        ftp.quit()
+        ftp.close()
+
+    def test_nlst_2_files(self):
+        ftp = FTP()
+        ftp.connect('localhost', self.port)
+        ftp.set_debuglevel(0)
+        ftp.login('user2','other_pass')
+        self.lines = []
+        def accumulate(line):
+            self.lines.append(line)
+
+        ftp.storlines('STOR palladium.csv', BytesIO(b'data'))
+        ftp.storlines('STOR vanadiyam.pdf', BytesIO(b'more data'))
+        ftp.retrlines('NLST', accumulate)
+        self.assertEqual(self.lines, ['palladium.csv', 'vanadiyam.pdf'])
+        ftp.quit()
+        ftp.close()
 
     def test_retrieve_expected_file_returns_file(self):
         expected_content = 'content of my file\nis a complete mystery to me.'
