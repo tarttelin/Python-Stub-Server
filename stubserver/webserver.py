@@ -1,10 +1,15 @@
-import BaseHTTPServer
+import sys
+if sys.version_info[0] < 3:
+    import BaseHTTPServer
+else:
+    import http.server as BaseHTTPServer
 import threading
 import re
-import urllib
+if sys.version_info[0] < 3:
+    from urllib import urlopen
+else:
+    from urllib.request import urlopen
 import time
-import sys
-
 
 class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
     """
@@ -174,7 +179,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def _get_data(self):
         max_chunk_size = 10*1024*1024
-        if not self.headers.has_key("content-length"):
+        if "content-length" not in self.headers:
             return ""
         size_remaining = int(self.headers["content-length"])
         L = []
@@ -182,7 +187,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
             chunk_size = min(size_remaining, max_chunk_size)
             L.append(self.rfile.read(chunk_size))
             size_remaining -= len(L[-1])
-        return ''.join(L)
+        return b''.join(L)
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -211,7 +216,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(exp.response[0], "Python")
             self.send_header("Content-Type", exp.response[1])
             self.end_headers()
-            self.wfile.write(exp.response[2])
+            self.wfile.write(exp.response[2].encode('utf-8'))
             data = self._get_data()
             exp.satisfied = True
             exp.data_capture["body"] = data
@@ -235,7 +240,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(err_code, err_message)
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
-            self.wfile.write(err_body)
+            self.wfile.write(err_body.encode('utf-8'))
             self._get_data()
 
         self.wfile.flush()
