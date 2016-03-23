@@ -1,14 +1,14 @@
 import unittest
 import sys
+from io import BytesIO
+from ftplib import FTP
+from stubserver import StubServer, FTPStubServer
+from unittest import TestCase
 if sys.version_info[0] < 3:
     from urllib2 import OpenerDirector, HTTPHandler, Request
 else:
     from urllib.request import OpenerDirector, HTTPHandler, Request
-from io import BytesIO, StringIO
-from ftplib import FTP
-from stubserver import StubServer, FTPStubServer
-    
-from unittest import TestCase
+
 
 class WebTest(TestCase):
     def setUp(self):
@@ -58,7 +58,7 @@ class WebTest(TestCase):
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='<inhabitant name="Chris"/>')
         self.assertEqual(204, reply_code)
 
-    def test_post_with_data_and_no_body_response(self):
+    def test_multiple_expectations_identifies_correct_unmatched_request(self):
         self.server.expect(method="POST", url="address/\d+/inhabitant", data='Twas brillig and the slithy toves').and_return(reply_code=204)
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='Twas brillig and the slithy toves')
         self.assertEqual(204, reply_code)

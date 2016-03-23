@@ -1,15 +1,16 @@
 import sys
+import threading
+import re
+import time
 if sys.version_info[0] < 3:
     import BaseHTTPServer
 else:
     import http.server as BaseHTTPServer
-import threading
-import re
 if sys.version_info[0] < 3:
     from urllib import urlopen
 else:
     from urllib.request import urlopen
-import time
+
 
 class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
     """
@@ -182,12 +183,12 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         if "content-length" not in self.headers:
             return ""
         size_remaining = int(self.headers["content-length"])
-        L = []
+        data = []
         while size_remaining:
             chunk_size = min(size_remaining, max_chunk_size)
-            L.append(self.rfile.read(chunk_size))
-            size_remaining -= len(L[-1])
-        return b''.join(L)
+            data.append(self.rfile.read(chunk_size))
+            size_remaining -= len(data[-1])
+        return b''.join(data)
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -200,7 +201,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         if not self.raw_requestline:
             self.close_connection = 1
             return
-        if not self.parse_request(): # An error code has been sent, just exit
+        if not self.parse_request():  # An error code has been sent, just exit
             return
         method = self.command
         if self.path == "/__shutdown":
