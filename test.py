@@ -1,9 +1,13 @@
 import unittest
-import urllib2
+import sys
+from io import BytesIO
 from ftplib import FTP
 from stubserver import StubServer, FTPStubServer
-from StringIO import StringIO
 from unittest import TestCase
+if sys.version_info[0] < 3:
+    from urllib2 import OpenerDirector, HTTPHandler, Request
+else:
+    from urllib.request import OpenerDirector, HTTPHandler, Request
 
 
 class WebTest(TestCase):
@@ -16,60 +20,60 @@ class WebTest(TestCase):
         self.server.verify()  # this is redundant because stop includes verify
 
     def _make_request(self, url, method="GET", payload="", headers={}):
-        self.opener = urllib2.OpenerDirector()
-        self.opener.add_handler(urllib2.HTTPHandler())
-        request = urllib2.Request(url, headers=headers, data=payload)
+        self.opener = OpenerDirector()
+        self.opener.add_handler(HTTPHandler())
+        request = Request(url, headers=headers, data=payload.encode('utf-8'))
         request.get_method = lambda: method
         response = self.opener.open(request)
         response_code = getattr(response, 'code', -1)
         return (response, response_code)
 
     def test_get_with_file_call(self):
-        f = open('data.txt', 'w')
-        f.write("test file")
-        f.close()
+        with open('data.txt', 'w') as f: 
+            f.write("test file")
         self.server.expect(method="GET", url="/address/\d+$").and_return(mime_type="text/xml", file_content="./data.txt")
         response, response_code = self._make_request("http://localhost:8998/address/25", method="GET")
-        expected = open("./data.txt", "r").read()
+        with open("./data.txt", "r") as f:
+            expected = f.read().encode('utf-8')
         try:
-            self.assertEquals(expected, response.read())
+            self.assertEqual(expected, response.read())
         finally:
             response.close()
-
+        
     def test_put_with_capture(self):
         capture = {}
         self.server.expect(method="PUT", url="/address/\d+$", data_capture=capture).and_return(reply_code=201)
         f, reply_code = self._make_request("http://localhost:8998/address/45", method="PUT", payload=str({"hello": "world", "hi": "mum"}))
         try:
-            self.assertEquals("", f.read())
+            self.assertEqual(b"", f.read())
             captured = eval(capture["body"])
-            self.assertEquals("world", captured["hello"])
-            self.assertEquals("mum", captured["hi"])
-            self.assertEquals(201, reply_code)
+            self.assertEqual("world", captured["hello"])
+            self.assertEqual("mum", captured["hi"])
+            self.assertEqual(201, reply_code)
         finally:
             f.close()
 
     def test_post_with_data_and_no_body_response(self):
         self.server.expect(method="POST", url="address/\d+/inhabitant", data='<inhabitant name="Chris"/>').and_return(reply_code=204)
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='<inhabitant name="Chris"/>')
-        self.assertEquals(204, reply_code)
+        self.assertEqual(204, reply_code)
 
-    def test_post_with_data_and_no_body_response(self):
+    def test_multiple_expectations_identifies_correct_unmatched_request(self):
         self.server.expect(method="POST", url="address/\d+/inhabitant", data='Twas brillig and the slithy toves').and_return(reply_code=204)
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='Twas brillig and the slithy toves')
-        self.assertEquals(204, reply_code)
+        self.assertEqual(204, reply_code)
         self.server.expect(method="GET", url="/monitor/server_status$").and_return(content="Four score and seven years ago", mime_type="text/html")
         try:
             self.server.stop()
         except Exception as e:
-            self.assertEquals(-1, str(e).find('brillig'), str(e))
+            self.assertEqual(-1, str(e).find('brillig'), str(e))
 
     def test_get_with_data(self):
         self.server.expect(method="GET", url="/monitor/server_status$").and_return(content="<html><body>Server is up</body></html>", mime_type="text/html")
         f, reply_code = self._make_request("http://localhost:8998/monitor/server_status", method="GET")
         try:
-            self.assertTrue("Server is up" in f.read())
-            self.assertEquals(200, reply_code)
+            self.assertTrue(b"Server is up" in f.read())
+            self.assertEqual(200, reply_code)
         finally:
             f.close()
 
@@ -77,8 +81,8 @@ class WebTest(TestCase):
         self.server.expect(method="GET", url="/$").and_return(content="<html><body>Server is up</body></html>", mime_type="text/html")
         f, reply_code = self._make_request("http://localhost:8998/", method="GET")
         try:
-            self.assertTrue("Server is up" in f.read())
-            self.assertEquals(200, reply_code)
+            self.assertTrue(b"Server is up" in f.read())
+            self.assertEqual(200, reply_code)
         finally:
             f.close()
 
@@ -92,9 +96,9 @@ class WebTest(TestCase):
                                            payload='<inhabitant name="Chris"/>')
 
         # Validate the response
-        self.assertEquals("Method not allowed", f.msg)
-        self.assertEquals(405, reply_code)
-        self.assertTrue(f.read().startswith("Method PUT not allowed."))
+        self.assertEqual("Method not allowed", f.msg)
+        self.assertEqual(405, reply_code)
+        self.assertTrue(f.read().startswith(b"Method PUT not allowed."))
 
         # And we have an unmet expectation which needs to mention the POST that didn't happen
         try:
@@ -104,7 +108,7 @@ class WebTest(TestCase):
 
     def test_unexpected_get(self):
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="GET")
-        self.assertEquals(404, reply_code)
+        self.assertEqual(404, reply_code)
         self.server.stop()
 
     def test_repeated_get(self):
@@ -114,72 +118,82 @@ class WebTest(TestCase):
 
         for i in range(1, 4):
             f, reply_code = self._make_request("http://localhost:8998/counter", method="GET")
-            self.assertEquals(200, reply_code)
-            self.assertEquals(str(i), f.read())
+            self.assertEqual(200, reply_code)
+            self.assertEqual(str(i).encode('utf-8'), f.read())
 
     def test_extra_get(self):
         self.server.expect(method="GET", url="counter$").and_return(content="1")
         f, reply_code = self._make_request("http://localhost:8998/counter", method="GET")
-        self.assertEquals(200, reply_code)
-        self.assertEquals("1", f.read())
+        self.assertEqual(200, reply_code)
+        self.assertEqual(b"1", f.read())
 
         f, reply_code = self._make_request("http://localhost:8998/counter", method="GET")
-        self.assertEquals(400, reply_code)
-        self.assertEquals("Expectations exhausted",f.msg)
-        self.assertTrue(f.read().startswith("Expectations at this URL have already been satisfied.\n"))
+        self.assertEqual(400, reply_code)
+        self.assertEqual("Expectations exhausted",f.msg)
+        self.assertTrue(f.read().startswith(b"Expectations at this URL have already been satisfied.\n"))
 
 
 class FTPTest(TestCase):
     def setUp(self):
-        self.random_port = 0
-        self.server = FTPStubServer(self.random_port)
+        self.server = FTPStubServer(0)
         self.server.run()
         self.port = self.server.server.server_address[1]
-
+        self.ftp = FTP()
+        self.ftp.set_debuglevel(0)
+        self.ftp.connect('localhost', self.port)
+        self.ftp.login('user1', 'passwd')
+        
     def tearDown(self):
+        self.ftp.quit()
+        self.ftp.close()
         self.server.stop()
+
+    def test_change_directory(self):
+        self.ftp.cwd('newdir')
+        self.assertEqual(self.ftp.pwd(), 'newdir')
 
     def test_put_test_file(self):
         self.assertFalse(self.server.files("foo.txt"))
-        ftp = FTP()
-        ftp.set_debuglevel(0)
-        ftp.connect('localhost', self.port)
-        ftp.login('user1', 'passwd')
-
-        ftp.storlines('STOR foo.txt', StringIO('cant believe its not bitter'))
-        ftp.quit()
-        ftp.close()
+        self.ftp.storlines('STOR foo.txt', BytesIO(b'cant believe its not bitter'))
         self.assertTrue(self.server.files("foo.txt"))
 
     def test_put_2_files_associates_the_correct_content_with_the_correct_filename(self):
-        ftp = FTP()
-        ftp.connect('localhost', self.port)
-        ftp.set_debuglevel(0)
-        ftp.login('user2','other_pass')
-
-        ftp.storlines('STOR robot.txt', StringIO("\n".join(["file1 content" for i in range(1024)])))
-        ftp.storlines('STOR monster.txt', StringIO("file2 content"))
-        ftp.quit()
-        ftp.close()
-        self.assertEquals("\r\n".join(["file1 content" for i in range(1024)]),
+        data = "\n".join(["file1 content" for i in range(1024)])
+        self.ftp.storlines('STOR robot.txt', BytesIO(data.encode('utf-8')))
+        self.ftp.storlines('STOR monster.txt', BytesIO(b'file2 content'))
+        self.assertEqual("\r\n".join(["file1 content" for i in range(1024)]),
                           self.server.files("robot.txt").strip())
-        self.assertEquals("file2 content", self.server.files("monster.txt").strip())
+        self.assertEqual("file2 content", self.server.files("monster.txt").strip())
+
+    def test_list_2_files(self):
+        self.lines = []
+        def accumulate(line):
+            self.lines.append(line)
+
+        self.ftp.storlines('STOR palladium.csv', BytesIO(b'data'))
+        self.ftp.storlines('STOR vanadiyam.pdf', BytesIO(b'more data'))
+        self.ftp.retrlines('LIST', accumulate)
+        self.assertEqual(sorted(self.lines), sorted(['vanadiyam.pdf', 'palladium.csv']))
+
+    def test_nlst_2_files(self):
+        self.lines = []
+        def accumulate(line):
+            self.lines.append(line)
+
+        self.ftp.storlines('STOR palladium.csv', BytesIO(b'data'))
+        self.ftp.storlines('STOR vanadiyam.pdf', BytesIO(b'more data'))
+        self.ftp.retrlines('NLST', accumulate)
+        self.assertEqual(sorted(self.lines), sorted(['vanadiyam.pdf', 'palladium.csv']))
 
     def test_retrieve_expected_file_returns_file(self):
         expected_content = 'content of my file\nis a complete mystery to me.'
         self.server.add_file('foo.txt', expected_content)
-        ftp = FTP()
-        ftp.set_debuglevel(2)
-        ftp.connect('localhost', self.port)
-        ftp.login('chris', 'tarttelin')
         directory_content = []
-        ftp.retrlines('LIST', lambda x: directory_content.append(x))
+        self.ftp.retrlines('LIST', lambda x: directory_content.append(x))
         file_content = []
-        ftp.retrlines('RETR foo.txt', lambda x: file_content.append(x))
-        ftp.quit()
-        ftp.close()
+        self.ftp.retrlines('RETR foo.txt', lambda x: file_content.append(x))
         self.assertTrue('foo.txt' in '\n'.join(directory_content))
-        self.assertEquals(expected_content, '\n'.join(file_content))
+        self.assertEqual(expected_content, '\n'.join(file_content))
 
 
 class VerifyTest(TestCase):
