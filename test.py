@@ -53,6 +53,32 @@ class WebTest(TestCase):
         finally:
             f.close()
 
+    def test_post_with_wrong_data(self):
+        self.server.expect(method="POST", url="data/", data='Bob').and_return()
+        f, reply_code = self._make_request("http://localhost:8998/data/", method="POST", payload='Chris')
+        self.assertEqual(403, reply_code)
+        self.assertRaises(Exception, self.server.stop)
+
+    def test_post_with_multiple_expectations_wrong_data(self):
+        self.server.expect(method="POST", url="data/", data='Bob').and_return(reply_code=201)
+        self.server.expect(method="POST", url="data/", data='John').and_return(reply_code=202)
+        self.server.expect(method="POST", url="data/", data='Dave').and_return(reply_code=203)
+        f, reply_code = self._make_request("http://localhost:8998/data/", method="POST", payload='Dave')
+        self.assertEqual(203, reply_code)
+        f, reply_code = self._make_request("http://localhost:8998/data/", method="POST", payload='Bob')
+        self.assertEqual(201, reply_code)
+        f, reply_code = self._make_request("http://localhost:8998/data/", method="POST", payload='Chris')
+        self.assertEqual(403, reply_code)
+        self.assertRaises(Exception, self.server.stop)
+
+    def test_post_with_mixed_expectations(self):
+        self.server.expect(method="POST", url="data/").and_return(reply_code=202)
+        self.server.expect(method="POST", url="data/", data='John').and_return(reply_code=201)
+        f, reply_code = self._make_request("http://localhost:8998/data/", method="POST", payload='John')
+        self.assertEqual(201, reply_code)
+        f, reply_code = self._make_request("http://localhost:8998/data/", method="POST", payload='Dave')
+        self.assertEqual(202, reply_code)
+
     def test_post_with_data_and_no_body_response(self):
         self.server.expect(method="POST", url="address/\d+/inhabitant", data='<inhabitant name="Chris"/>').and_return(reply_code=204)
         f, reply_code = self._make_request("http://localhost:8998/address/45/inhabitant", method="POST", payload='<inhabitant name="Chris"/>')
