@@ -207,20 +207,35 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         if self.path == "/__shutdown":
             self.send_response(200, "Python")
 
+        data = self._get_data()
+
         expectations_matching_url = [x for x in self.expected if re.search(x.url, self.path)]
         expectations_matching_method = [x for x in expectations_matching_url if x.method == method]
         matching_expectations = [x for x in expectations_matching_method if not x.satisfied]
+        matching_expectations_with_data = [x for x in matching_expectations if x.data and x.data == data]
 
         err_code = err_message = err_body = None
-        if len(matching_expectations) > 0:
-            exp = matching_expectations[0]
+        if len(matching_expectations_with_data) > 0:
+            exp = matching_expectations_with_data[0]
             self.send_response(exp.response[0], "Python")
             self.send_header("Content-Type", exp.response[1])
             self.end_headers()
             self.wfile.write(exp.response[2].encode('utf-8'))
-            data = self._get_data()
             exp.satisfied = True
             exp.data_capture["body"] = data
+        elif len(matching_expectations) > 0:
+            exp = matching_expectations[0]
+            if exp.data:
+                err_code = 403
+                err_message = "Payload missing or incorrect"
+                err_body = "This URL expects data: {0}. Query provided: {1}".format(exp.data, data)
+            else:
+                self.send_response(exp.response[0], "Python")
+                self.send_header("Content-Type", exp.response[1])
+                self.end_headers()
+                self.wfile.write(exp.response[2].encode('utf-8'))
+                exp.satisfied = True
+                exp.data_capture["body"] = data
         elif len(expectations_matching_method) > 0:
             # All expectations have been fulfilled
             err_code = 400
@@ -242,7 +257,6 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
             self.wfile.write(err_body.encode('utf-8'))
-            self._get_data()
 
         self.wfile.flush()
 
