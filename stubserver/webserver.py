@@ -207,7 +207,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         if self.path == "/__shutdown":
             self.send_response(200, "Python")
 
-        data = self._get_data()
+        data = self._get_data().decode('utf-8')
 
         expectations_matching_url = [x for x in self.expected if re.search(x.url, self.path)]
         expectations_matching_method = [x for x in expectations_matching_url if x.method == method]
