@@ -5,7 +5,7 @@ a mock framework."""
 from stubserver.webserver import StubServer
 from stubserver.ftpserver import FTPStubServer
 
-VERSION = __version__ = '1.0.0'
+VERSION = __version__ = '1.0.1'
 __author__ = 'Chris Tarttelin and Point 2 inc'
 __email__ = 'chris@pyruby.co.uk'
 __url__ = 'http://www.pyruby.com/pythonstubserver'
