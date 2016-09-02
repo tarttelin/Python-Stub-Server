@@ -5,7 +5,7 @@
 
 [![coverage](https://coveralls.io/repos/tarttelin/Python-Stub-Server/badge.svg?branch=master&service=github)](https://coveralls.io/github/tarttelin/Python-Stub-Server?branch=master)
 
-## Web Server stub
+## Web Server stubb
 
 Testing external web dependencies in a mock objects style. Thanks to great contributions this
 library now supports Python 2.5 upto Python 3.4 (not yet tested with 3.5). There are a comprehensive suite of tests 
