@@ -181,7 +181,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
     def _get_data(self):
         max_chunk_size = 10 * 1024 * 1024
         if "content-length" not in self.headers:
-            return ""
+            return b''
         size_remaining = int(self.headers["content-length"])
         data = []
         while size_remaining:
