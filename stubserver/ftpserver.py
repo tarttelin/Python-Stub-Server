@@ -88,6 +88,10 @@ class FTPServer(SocketServer.BaseRequestHandler):
     def _PWD(self, cmd):
         self.request.send(('257 "%s" is your current location\r\n' % self.cwd).encode('utf-8'))
 
+    def _MKD(self, cmd):
+        mkd = cmd.split(' ', 2)[1]
+        self.request.send(('257 "%s" folder created\r\n' % mkd).encode('utf-8'))
+
     def _NLST(self, cmd):
         self.request.send(b'150 Accepted data connection\r\n')
         self.child_go('NLST')
