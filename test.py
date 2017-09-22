@@ -178,6 +178,11 @@ class FTPTest(TestCase):
         self.ftp.cwd('newdir')
         self.assertEqual(self.ftp.pwd(), 'newdir')
 
+    def test_make_directory(self):
+        prev_dir = self.ftp.pwd()
+        self.ftp.mkd('newdir/newdir')
+        self.assertEqual(self.ftp.pwd(), prev_dir)
+
     def test_put_test_file(self):
         self.assertFalse(self.server.files("foo.txt"))
         self.ftp.storlines('STOR foo.txt', BytesIO(b'cant believe its not bitter'))
