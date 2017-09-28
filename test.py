@@ -19,10 +19,13 @@ class WebTest(TestCase):
         self.server.stop()
         self.server.verify()  # this is redundant because stop includes verify
 
-    def _make_request(self, url, method="GET", payload="", headers={}):
+    def _make_request(self, url, method="GET", payload=None, headers={}):
         self.opener = OpenerDirector()
         self.opener.add_handler(HTTPHandler())
-        request = Request(url, headers=headers, data=payload.encode('utf-8'))
+        if payload is None:
+            request = Request(url, headers=headers)
+        else:
+            request = Request(url, headers=headers, data=payload.encode('utf-8'))
         request.get_method = lambda: method
         response = self.opener.open(request)
         response_code = getattr(response, 'code', -1)
