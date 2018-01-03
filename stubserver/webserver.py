@@ -138,7 +138,7 @@ class Expectation(object):
         self.data_capture = data_capture
         self.satisfied = False
 
-    def and_return(self, mime_type="text/html", reply_code=200, content="", file_content=None):
+    def and_return(self, mime_type="text/html", reply_code=200, content="", file_content=None, headers=None):
         """
         Define the response created by the expectation.
 
@@ -153,12 +153,15 @@ class Expectation(object):
 
         :param file_content: Define response's content from a file
         :type file_content: ``str``
+
+        :param headers: Additional HTTP header fields to be sent
+        :type headers: ``iterable of tuples (header field name, value)``
         """
         if file_content:
             f = open(file_content, "r")
             content = f.read()
             f.close()
-        self.response = (reply_code, mime_type, content)
+        self.response = (reply_code, mime_type, content, headers)
 
     def __str__(self):
         return "%s %s \n data_capture: %s\n" % (self.method, self.url, self.data_capture)
@@ -197,6 +200,15 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         __doc__ string for information on how to handle specific HTTP
         commands such as GET and POST.
         """
+
+        def send_headers(exp):
+            self.send_header("Content-Type", exp.response[1])
+            headers = exp.response[3]
+            if headers:
+                for header in headers:
+                    self.send_header(header[0], header[1])
+            self.end_headers()
+
         self.raw_requestline = self.rfile.readline()
         if not self.raw_requestline:
             self.close_connection = 1
@@ -218,8 +230,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
         if len(matching_expectations_with_data) > 0:
             exp = matching_expectations_with_data[0]
             self.send_response(exp.response[0], "Python")
-            self.send_header("Content-Type", exp.response[1])
-            self.end_headers()
+            send_headers(exp)
             self.wfile.write(exp.response[2].encode('utf-8'))
             exp.satisfied = True
             exp.data_capture["body"] = data
@@ -231,8 +242,7 @@ class StubResponse(BaseHTTPServer.BaseHTTPRequestHandler):
                 err_body = "This URL expects data: {0}. Query provided: {1}".format(exp.data, data)
             else:
                 self.send_response(exp.response[0], "Python")
-                self.send_header("Content-Type", exp.response[1])
-                self.end_headers()
+                send_headers(exp)
                 self.wfile.write(exp.response[2].encode('utf-8'))
                 exp.satisfied = True
                 exp.data_capture["body"] = data

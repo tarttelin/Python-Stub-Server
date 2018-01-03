@@ -1,4 +1,5 @@
 import unittest
+import requests
 import sys
 from io import BytesIO
 from ftplib import FTP
@@ -32,7 +33,7 @@ class WebTest(TestCase):
         return (response, response_code)
 
     def test_get_with_file_call(self):
-        with open('data.txt', 'w') as f: 
+        with open('data.txt', 'w') as f:
             f.write("test file")
         self.server.expect(method="GET", url="/address/\d+$").and_return(mime_type="text/xml", file_content="./data.txt")
         response, response_code = self._make_request("http://localhost:8998/address/25", method="GET")
@@ -42,7 +43,7 @@ class WebTest(TestCase):
             self.assertEqual(expected, response.read())
         finally:
             response.close()
-        
+
     def test_put_with_capture(self):
         capture = {}
         self.server.expect(method="PUT", url="/address/\d+$", data_capture=capture).and_return(reply_code=201)
@@ -161,6 +162,24 @@ class WebTest(TestCase):
         self.assertEqual("Expectations exhausted",f.msg)
         self.assertTrue(f.read().startswith(b"Expectations at this URL have already been satisfied.\n"))
 
+    def test_returns_additional_headers_for_expectation_without_data(self):
+        self.server.expect(method="GET", url="/api/endpoint").and_return(
+            headers=(("some_header", "foo"), ("some_other_header", "bar"),))
+
+        r = requests.get("http://localhost:8998/api/endpoint")
+
+        self.assertEqual(r.headers["some_header"], "foo")
+        self.assertEqual(r.headers["some_other_header"], "bar")
+
+    def test_returns_additional_headers_for_expectation_with_data(self):
+        self.server.expect(method="POST", url="/api/endpoint", data="expected data").and_return(
+            headers=(("some_header", "foo"), ("some_other_header", "bar"),))
+
+        r = requests.post("http://localhost:8998/api/endpoint", data="expected data")
+
+        self.assertEqual(r.headers["some_header"], "foo")
+        self.assertEqual(r.headers["some_other_header"], "bar")
+
 
 class FTPTest(TestCase):
     def setUp(self):
@@ -171,7 +190,7 @@ class FTPTest(TestCase):
         self.ftp.set_debuglevel(0)
         self.ftp.connect('localhost', self.port)
         self.ftp.login('user1', 'passwd')
-        
+
     def tearDown(self):
         self.ftp.quit()
         self.ftp.close()
