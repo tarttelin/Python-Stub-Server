@@ -4,7 +4,7 @@ python:
   # - "2.5"  # No longer supported
   - "2.6"
   - "2.7"
-  - "3.2"
+  # - "3.2"  # Officially retired
   - "3.3"
   - "3.4"
   - "3.5"
