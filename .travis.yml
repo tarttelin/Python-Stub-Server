@@ -4,17 +4,14 @@ python:
   # - "2.5"  # No longer supported
   - "2.6"
   - "2.7"
-  - "3.2"
+  # - "3.2"  # Officially retired
   - "3.3"
   - "3.4"
   - "3.5"
   - "pypy"
 
 install:
-  # - pip install -r requirements.txt
-  # - pip install -r requirements-tests.txt
-  # - pip install -r requirements-docs.txt
-  - pip install coveralls 'coverage<4'
+  - pip install -r requirements-test.txt
 
 script:
   - coverage run --source=stubserver setup.py test
