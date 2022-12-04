@@ -1,6 +1,8 @@
+import os
 import unittest
 import requests
 import sys
+import tempfile
 from io import BytesIO
 from ftplib import FTP
 from stubserver import StubServer, FTPStubServer
@@ -33,16 +35,19 @@ class WebTest(TestCase):
         return (response, response_code)
 
     def test_get_with_file_call(self):
-        with open('data.txt', 'w') as f:
+        data_file = None
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
             f.write("test file")
-        self.server.expect(method="GET", url="/address/\d+$").and_return(mime_type="text/xml", file_content="./data.txt")
+            data_file = f.name
+        self.server.expect(method="GET", url="/address/\d+$").and_return(mime_type="text/xml", file_content=data_file)
         response, response_code = self._make_request("http://localhost:8998/address/25", method="GET")
-        with open("./data.txt", "r") as f:
+        with open(data_file, "r") as f:
             expected = f.read().encode('utf-8')
         try:
             self.assertEqual(expected, response.read())
         finally:
             response.close()
+            os.unlink(data_file)
 
     def test_put_with_capture(self):
         capture = {}
